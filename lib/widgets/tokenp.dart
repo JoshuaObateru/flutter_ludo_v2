@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../gameengine/model/dice_model.dart';
 import '../gameengine/model/game_state.dart';
 import '../gameengine/model/token.dart';
@@ -7,8 +8,9 @@ import 'package:provider/provider.dart';
 class Tokenp extends StatelessWidget {
   final Token token;
   final List<double> dimentions;
-  Function(Token)callBack;
+  Function(Token) callBack;
   Tokenp(this.token, this.dimentions);
+
   Color _getcolor() {
     switch (this.token.type) {
       case TokenType.green:
@@ -34,10 +36,17 @@ class Tokenp extends StatelessWidget {
       width: dimentions[2],
       height: dimentions[3],
       child: GestureDetector(
-           onTap: (){
-             gameState.moveToken(token, dice.diceOne);
-           },
-              child: Card(
+        onTap: () {
+          if (gameState.userModel.turn == gameState.currentTurn &&
+              gameState.shouldPlay) {
+            Get.log(
+                "UserModel Turn from TokenP: ${gameState.userModel.turn}, Gamestate.CurrentTurn from TokenP: ${gameState.currentTurn} ");
+            gameState.moveToken(token, dice.diceOne);
+          } else {
+            Get.log("Token P ==> Else");
+          }
+        },
+        child: Card(
           elevation: 5,
           child: Container(
             decoration: BoxDecoration(

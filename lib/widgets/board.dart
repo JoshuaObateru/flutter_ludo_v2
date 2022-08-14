@@ -9,7 +9,7 @@ class Board extends StatelessWidget {
     for (var i = 0; i < 15; i++) {
       rows.add(
         Container(
-          child: LudoRow(i,keyRefrences[i]),
+          child: LudoRow(i, keyRefrences[i]),
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(color: Colors.grey),

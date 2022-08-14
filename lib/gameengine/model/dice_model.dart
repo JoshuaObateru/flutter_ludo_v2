@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+
 class DiceModel with ChangeNotifier {
   int diceOne = 1;
 
@@ -7,6 +8,7 @@ class DiceModel with ChangeNotifier {
 
   void generateDiceOne() {
     diceOne = Random().nextInt(6) + 1;
+    // diceOne = 5;
     print("diceOne: $diceOne");
     notifyListeners();
   }
