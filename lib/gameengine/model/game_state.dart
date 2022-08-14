@@ -491,7 +491,6 @@ class GameState with ChangeNotifier {
 
   updateCurrentPlayerHasPlayed(bool status) {
     currentPlayerHasPlayed = status;
-    notifyListeners();
     updateGameStateToSocket();
   }
 
@@ -529,33 +528,25 @@ class GameState with ChangeNotifier {
         {"dice_number": dice.diceOne, "dice_number_count": dice.diceOneCount});
     // //listen for when Dice State Changes.
     socket.on('dice_state_changed', (data) {
-      print(data); //
-      // isLoading.value = true;
       dice.diceOne = data['dice_number'];
+      notifyListeners();
       // dice.diceOne = 6;
 
       Get.log("Current socket Dice ${data['dice_number']}");
       Get.log("Current assigned socket Dice ${dice.diceOne}");
-
-      // isLoading.value = false;
-      notifyListeners();
     });
-    notifyListeners();
-    Get.log('Notifieddd');
   }
 
   updateCurrentTurnNew() {
     if (currentTurnIndex + 1 < turns.length) {
       currentTurnIndex = currentTurnIndex + 1;
       currentTurn = turns[currentTurnIndex];
-      notifyListeners();
       Future.delayed(const Duration(seconds: 1), () {
         updateGameStateToSocket();
       });
     } else {
       currentTurnIndex = 0;
       currentTurn = turns[0];
-      notifyListeners();
       Future.delayed(const Duration(seconds: 1), () {
         updateGameStateToSocket();
       });
