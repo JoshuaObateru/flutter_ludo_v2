@@ -130,6 +130,8 @@ class GameState with ChangeNotifier {
       // turns = decoded['turns'];
       turns = List<int>.from(decoded['turns']);
       currentPlayerHasPlayed = decoded["currentPlayerHasPlayed"];
+      notifyListeners();
+
       Get.log(" Turns ${decoded['turns']}");
 
       Get.log("Current socket turn ${decoded['current_turn']}");
@@ -155,8 +157,6 @@ class GameState with ChangeNotifier {
     socket.on('disconnect', (data) {
       Get.log('disconnect');
     });
-
-    notifyListeners();
   }
 
   moveToken(Token token, int steps) {
