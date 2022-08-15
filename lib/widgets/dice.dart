@@ -49,7 +49,8 @@ class Dice extends StatelessWidget {
                 Expanded(
                   child: GestureDetector(
                     onTap: () async {
-                      if (gameState.userModel?.turn == gameState.currentTurn) {
+                      if (gameState.userModel?.turn == gameState.currentTurn &&
+                          gameState.currentPlayerHasPlayed) {
                         await updateDices(dice, gameState);
 
                         var future =
