@@ -16,5 +16,5 @@ class Token {
   UserModel userModel;
 
   Token(this.type, this.tokenPosition, this.tokenState, this.id, this.turn,
-      {this.userModel});
+      {this.userModel, this.positionInPath});
 }

@@ -38,10 +38,11 @@ class Tokenp extends StatelessWidget {
       child: GestureDetector(
         onTap: () {
           if (gameState.userModel.turn == gameState.currentTurn &&
-              gameState.shouldPlay) {
+              gameState.shouldPlay &&
+              token.userModel.id == gameState.userModel.id) {
             Get.log(
                 "UserModel Turn from TokenP: ${gameState.userModel.turn}, Gamestate.CurrentTurn from TokenP: ${gameState.currentTurn} ");
-            gameState.moveToken(token, dice.diceOne);
+            gameState.emitPieceMovement(token, dice.diceOne);
           } else {
             Get.log("Token P ==> Else");
           }

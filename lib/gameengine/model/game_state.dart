@@ -25,10 +25,19 @@ class GameState with ChangeNotifier {
   bool shouldPlay;
   bool currentPlayerHasPlayed = true;
   UserModel userModel;
+  String currentPlayerId;
   // List<UserModel> users;
   // String? roomId;
   List<int> turns;
   int currentTurnIndex;
+
+  final List<Map<String, dynamic>> tokens = [
+    {"type": TokenType.green, "color": Colors.green},
+    {"type": TokenType.yellow, "color": Colors.yellow},
+    {"type": TokenType.blue, "color": Colors.blue},
+    {"type": TokenType.red, "color": Colors.red}
+  ];
+
   GameState() {
     gameTokens = [
       //Green Tokens home
@@ -143,6 +152,34 @@ class GameState with ChangeNotifier {
       // isLoading.value = false;
     });
 
+    socket.on('joined_game', (data) {
+      var particularTokenIndex = tokens.indexWhere(
+          (element) => element["type"].toString() == data["tokenType"]);
+      Get.log("Data is $data");
+      tokens[particularTokenIndex]["name"] = data["name"];
+      notifyListeners();
+    });
+
+    socket.on('yourRound', (data) {
+      Get.log("on Your Round Called");
+      currentPlayerId = data["playerId"];
+      Get.log("Your Round id $data");
+      notifyListeners();
+    });
+
+    socket.on('missedOpportunity', (data) {
+      updateCurrentTurnNew();
+    });
+
+    socket.on('pieceMovement', (data) {
+      Get.log("On Piece Emitted piece Movement, $data");
+
+      Get.log("Inside Piece Movement if");
+      Get.log("Current Player Id $currentPlayerId");
+      Get.log("User Model Id ${userModel.id}");
+      moveToken(decodeSingleGameToken(data['gameToken']), data['steps']);
+    });
+
     // socket.on('dice_state_changed', (data) {
     //   print(data); //
     //   // isLoading.value = true;
@@ -162,6 +199,16 @@ class GameState with ChangeNotifier {
     });
   }
 
+  emitPieceMovement(Token token, int steps) {
+    if (currentPlayerId == userModel.id) {
+      Get.log("I am emitting here");
+      socket.emit('pieceMovement',
+          {'gameToken': encodeGameToken(token), 'steps': steps});
+
+      Get.log("Emitted piece Movement");
+    }
+  }
+
   moveToken(Token token, int steps) {
     Position destination;
     int pathPosition;
@@ -175,16 +222,18 @@ class GameState with ChangeNotifier {
       this.gameTokens[token.id].tokenPosition = destination;
       this.gameTokens[token.id].positionInPath = pathPosition;
       notifyListeners();
-      if (steps == 6) {
-        Get.log("From steps == 6 $steps");
-        shouldPlay = true;
-        updateGameStateToSocket();
-        updateCurrentPlayerHasPlayed(true);
-      } else if (steps != 6) {
-        Get.log("From steps != 6 $steps");
-        shouldPlay = false;
-        updateCurrentTurnNew();
-        updateCurrentPlayerHasPlayed(true);
+      if (currentPlayerId == userModel.id) {
+        if (steps == 6) {
+          Get.log("From steps == 6 $steps");
+          shouldPlay = true;
+          updateGameStateToSocket();
+          updateCurrentPlayerHasPlayed(true);
+        } else if (steps != 6) {
+          Get.log("From steps != 6 $steps");
+          shouldPlay = false;
+          updateCurrentTurnNew();
+          updateCurrentPlayerHasPlayed(true);
+        }
       }
     } else if (token.tokenState != TokenState.initial) {
       int step = token.positionInPath + steps;
@@ -223,16 +272,18 @@ class GameState with ChangeNotifier {
           notifyListeners();
         });
       }
-      if (steps == 6) {
-        Get.log("From steps == 6 $steps");
-        shouldPlay = true;
-        updateGameStateToSocket();
-        updateCurrentPlayerHasPlayed(true);
-      } else if (steps != 6) {
-        Get.log("From steps != 6 $steps");
-        shouldPlay = false;
-        updateCurrentTurnNew();
-        updateCurrentPlayerHasPlayed(true);
+      if (currentPlayerId == userModel.id) {
+        if (steps == 6) {
+          Get.log("From steps == 6 $steps");
+          shouldPlay = true;
+          updateGameStateToSocket();
+          updateCurrentPlayerHasPlayed(true);
+        } else if (steps != 6) {
+          Get.log("From steps != 6 $steps");
+          shouldPlay = false;
+          updateCurrentTurnNew();
+          updateCurrentPlayerHasPlayed(true);
+        }
       }
     } else if (token.tokenState != TokenState.initial && steps == 0) return;
   }
@@ -408,12 +459,23 @@ class GameState with ChangeNotifier {
     }
     canEnterGame = isCanEnterGameArr.contains(true);
     if (canEnterGame == true) {
-      socket.emit('join_game', json.encode({"id": socket.id}));
+      socket.emit('join_game', {
+        "playerId": socket.id,
+        "tokenType": tokenType.toString(),
+        "name": name
+      });
       updateGameStateToSocket();
       listentoDiceStateSocket(dice);
       notifyListeners();
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) => GameHome(title: "Game Home")));
+      socket.on('gameHasStarted', (data) {
+        Get.log("Game Has Started Fired:::");
+        // updateYourRoundEvent();
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => GameHome(
+                title: "Game Home", socket: socket, userModel: userModel)));
+      });
+      // Navigator.of(context).push(MaterialPageRoute(
+      //     builder: (context) => GameHome(title: "Game Home")));
     } else {
       Get.snackbar('Info', "Token taken already",
           snackPosition: SnackPosition.BOTTOM);
@@ -471,6 +533,25 @@ class GameState with ChangeNotifier {
     return positions.toList();
   }
 
+  encodeGameToken(Token token) {
+    return {
+      "id": token.id,
+      "type": token.type.toString(),
+      "tokenPosition": {
+        "row": token.tokenPosition.row,
+        "column": token.tokenPosition.column
+      },
+      "tokenState": token.tokenState.toString(),
+      "positionInPath": token.positionInPath,
+      "turn": token.turn,
+      "userModel": {
+        "id": token.userModel?.id,
+        "turn": token.userModel?.turn,
+        "name": token.userModel?.name
+      }
+    };
+  }
+
   List<Map<String, dynamic>> _destructureGameTokens() {
     List<Map<String, dynamic>> mappedGameTokens = [];
     for (int i = 0; i < gameTokens.length; i++) {
@@ -497,14 +578,29 @@ class GameState with ChangeNotifier {
     return mappedGameTokens.toList();
   }
 
+  Token decodeSingleGameToken(dynamic data) {
+    var type = TokenType.values.firstWhere((e) => e.toString() == data['type']);
+    var tokenPosition =
+        Position(data['tokenPosition']['row'], data['tokenPosition']['column']);
+    var tokenState =
+        TokenState.values.firstWhere((e) => e.toString() == data['tokenState']);
+    var tokenUserModel = UserModel(data['userModel']['id'],
+        data['userModel']['turn'], data['userModel']['name']);
+    var tokenId = data['id'];
+    var tokenTurn = data['turn'];
+    var positionInPath = data['positionInPath'];
+    return Token(type, tokenPosition, tokenState, tokenId, tokenTurn,
+        userModel: tokenUserModel, positionInPath: positionInPath);
+  }
+
   decodeSocketGameTokens(List<dynamic> data) {
     for (int i = 0; i < data.length; i++) {
       dynamic dataObject = data[i];
-      gameTokens[i].tokenPosition = Position(dataObject['tokenPosition']['row'],
-          dataObject['tokenPosition']['column']);
+      // gameTokens[i].tokenPosition = Position(dataObject['tokenPosition']['row'],
+      //     dataObject['tokenPosition']['column']);
 
-      gameTokens[i].tokenState = TokenState.values
-          .firstWhere((e) => e.toString() == dataObject['tokenState']);
+      // gameTokens[i].tokenState = TokenState.values
+      //     .firstWhere((e) => e.toString() == dataObject['tokenState']);
       gameTokens[i].positionInPath = dataObject['positionInPath'];
       gameTokens[i].userModel = UserModel(dataObject['userModel']['id'],
           dataObject['userModel']['turn'], dataObject['userModel']['name']);
@@ -562,10 +658,10 @@ class GameState with ChangeNotifier {
   }
 
   dicerollSocket(DiceModel dice) {
-    socket.emit('dice_roll',
+    socket.emit('throw',
         {"dice_number": dice.diceOne, "dice_number_count": dice.diceOneCount});
     // //listen for when Dice State Changes.
-    socket.on('dice_state_changed', (data) {
+    socket.on('throw', (data) {
       dice.diceOne = data['dice_number'];
       notifyListeners();
       // dice.diceOne = 6;
@@ -579,12 +675,14 @@ class GameState with ChangeNotifier {
     if (currentTurnIndex + 1 < turns.length) {
       currentTurnIndex = currentTurnIndex + 1;
       currentTurn = turns[currentTurnIndex];
+      updateYourRoundEvent();
       Future.delayed(const Duration(seconds: 1), () {
         updateGameStateToSocket();
       });
     } else {
       currentTurnIndex = 0;
       currentTurn = turns[0];
+      updateYourRoundEvent();
       Future.delayed(const Duration(seconds: 1), () {
         updateGameStateToSocket();
       });
@@ -593,5 +691,9 @@ class GameState with ChangeNotifier {
     // updateGameStateToSocket();
 
     // notifyListeners();
+  }
+
+  updateYourRoundEvent() {
+    socket.emit('yourRound', {"currentTurnIndex": currentTurnIndex});
   }
 }
