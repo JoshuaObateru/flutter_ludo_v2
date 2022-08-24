@@ -179,6 +179,26 @@ class GameState with ChangeNotifier {
       moveToken(decodeSingleGameToken(data['gameToken']), data['steps']);
     });
 
+    socket.on('arrived', (data) {
+      print(data);
+    });
+
+    socket.on('theFirstWinner', (data) {
+      print(data);
+    });
+
+    socket.on('theSecondWinner', (data) {
+      print(data);
+    });
+
+    socket.on('theThirdWinner', (data) {
+      print(data);
+    });
+
+    socket.on('gameHasEnded', (data) {
+      print(data);
+    });
+
     // socket.on('dice_state_changed', (data) {
     //   print(data); //
     //   // isLoading.value = true;
