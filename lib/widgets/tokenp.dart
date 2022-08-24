@@ -39,7 +39,8 @@ class Tokenp extends StatelessWidget {
         onTap: () {
           if (gameState.userModel.turn == gameState.currentTurn &&
               gameState.shouldPlay &&
-              token.userModel.id == gameState.userModel.id) {
+              token.userModel.id == gameState.userModel.id &&
+              token.tokenState != TokenState.arrived) {
             Get.log(
                 "UserModel Turn from TokenP: ${gameState.userModel.turn}, Gamestate.CurrentTurn from TokenP: ${gameState.currentTurn} ");
             gameState.emitPieceMovement(token, dice.diceOne);

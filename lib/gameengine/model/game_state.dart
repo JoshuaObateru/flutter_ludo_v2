@@ -30,6 +30,8 @@ class GameState with ChangeNotifier {
   // String? roomId;
   List<int> turns;
   int currentTurnIndex;
+  List<Map<String, dynamic>> arrivedTokens = [];
+  List winnersArray = [];
 
   final List<Map<String, dynamic>> tokens = [
     {"type": TokenType.green, "color": Colors.green},
@@ -119,6 +121,8 @@ class GameState with ChangeNotifier {
       // turns = decoded['turns'];
       turns = List<int>.from(decoded['turns']);
       currentPlayerHasPlayed = decoded["currentPlayerHasPlayed"];
+      winnersArray = decoded["winnersArray"];
+      arrivedTokens = decoded["arrivedTokens"];
       notifyListeners();
 
       decodeSocketGameTokens(decoded['game_tokens']);
@@ -172,11 +176,6 @@ class GameState with ChangeNotifier {
     });
 
     socket.on('pieceMovement', (data) {
-      Get.log("On Piece Emitted piece Movement, $data");
-
-      Get.log("Inside Piece Movement if");
-      Get.log("Current Player Id $currentPlayerId");
-      Get.log("User Model Id ${userModel.id}");
       moveToken(decodeSingleGameToken(data['gameToken']), data['steps']);
     });
 
@@ -201,11 +200,8 @@ class GameState with ChangeNotifier {
 
   emitPieceMovement(Token token, int steps) {
     if (currentPlayerId == userModel.id) {
-      Get.log("I am emitting here");
       socket.emit('pieceMovement',
           {'gameToken': encodeGameToken(token), 'steps': steps});
-
-      Get.log("Emitted piece Movement");
     }
   }
 
@@ -237,6 +233,42 @@ class GameState with ChangeNotifier {
       }
     } else if (token.tokenState != TokenState.initial) {
       int step = token.positionInPath + steps;
+      if (step >= 56) {
+        var tokenIndex =
+            arrivedTokens.indexWhere((element) => element["id"] == token.id);
+        if (tokenIndex == -1) {
+          arrivedTokens.add(encodeGameToken(token));
+          var currentGameTokenIndex =
+              this.gameTokens.indexWhere((element) => element.id == token.id);
+          this.gameTokens[currentGameTokenIndex].tokenState =
+              TokenState.arrived;
+          notifyListeners();
+          socket.emit('arrived', {"piece": encodeGameToken(token)});
+        }
+        var tokens = arrivedTokens
+            .where((element) => element["type"] == token.type.toString());
+        if (tokens.length == 4) {
+          // 4 arrived
+          var positionInWinnersArray = winnersArray
+              .indexWhere((element) => element["type"] == token.type);
+          if (positionInWinnersArray == -1) {
+            if (winnersArray.length == 0) {
+              winnersArray.add(token.type);
+              notifyListeners();
+              socket.emit('theFirstWinner', {"playerId": token.userModel.id});
+            } else if (winnersArray.length == 1) {
+              winnersArray.add(token.type);
+              notifyListeners();
+              socket.emit('theSecondWinner', {"playerId": token.userModel.id});
+            } else if (winnersArray.length == 2) {
+              winnersArray.add(token.type);
+              notifyListeners();
+              socket.emit('theThirdWinner', {"playerId": token.userModel.id});
+              socket.emit('gameHasEnded', {});
+            }
+          }
+        }
+      }
       if (step > 56) return;
       destination = _getPosition(token.type, step);
       pathPosition = step;
@@ -516,7 +548,9 @@ class GameState with ChangeNotifier {
             "number_of_times_rolled": numberOfTimesRolled,
             "current_turn_index": currentTurnIndex,
             "turns": turns,
-            "currentPlayerHasPlayed": currentPlayerHasPlayed
+            "currentPlayerHasPlayed": currentPlayerHasPlayed,
+            "winnersArray": winnersArray,
+            "arrivedTokens": arrivedTokens,
           }));
     });
 

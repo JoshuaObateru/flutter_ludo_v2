@@ -4,7 +4,7 @@ import './position.dart';
 
 enum TokenType { green, yellow, blue, red }
 
-enum TokenState { initial, home, normal, safe, safeinpair }
+enum TokenState { initial, home, normal, safe, safeinpair, arrived }
 
 class Token {
   final int id;
