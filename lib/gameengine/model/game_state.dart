@@ -20,6 +20,8 @@ class GameState with ChangeNotifier {
   List<Position> yellowInitital;
   List<Position> blueInitital;
   List<Position> redInitital;
+  List<Map<String, dynamic>> arrivedTokens;
+  List<String> winnersArray;
   int currentTurn;
   int numberOfTimesRolled; // applicaple when a 6 is rolled
   bool shouldPlay;
@@ -30,8 +32,6 @@ class GameState with ChangeNotifier {
   // String? roomId;
   List<int> turns;
   int currentTurnIndex;
-  List<Map<String, dynamic>> arrivedTokens = [];
-  List winnersArray = [];
 
   final List<Map<String, dynamic>> tokens = [
     {"type": TokenType.green, "color": Colors.green},
@@ -77,11 +77,16 @@ class GameState with ChangeNotifier {
     this.yellowInitital = [];
     this.blueInitital = [];
     this.redInitital = [];
+
+    this.arrivedTokens = [];
+    this.winnersArray = [];
+
     currentTurn = 1;
     numberOfTimesRolled = 0;
     shouldPlay = false;
     turns = [1, 2, 3, 4];
     currentTurnIndex = 0;
+
     // roomId =
     //     "${gameTokens?[0].userModel?.id}-${gameTokens?[4].userModel?.id}-${gameTokens?[8].userModel?.id}-${gameTokens?[12].userModel?.id}";
     initializeSocket();
@@ -121,11 +126,13 @@ class GameState with ChangeNotifier {
       // turns = decoded['turns'];
       turns = List<int>.from(decoded['turns']);
       currentPlayerHasPlayed = decoded["currentPlayerHasPlayed"];
-      winnersArray = decoded["winnersArray"];
-      arrivedTokens = decoded["arrivedTokens"];
+      // winnersArray = decoded["winnersArray"];
+      // arrivedTokens = decoded["arrivedTokens"];
       notifyListeners();
 
       decodeSocketGameTokens(decoded['game_tokens']);
+      decodeWinnersArrayAndArrivedTokensArray(
+          decoded["winnersArray"], decoded["arrivedTokens"]);
       for (int i = 0; i < decoded['green_initial'].length; i++) {
         greenInitital[i] = Position(decoded['green_initial'][i]['row'],
             decoded['green_initial'][i]['column']);
@@ -270,18 +277,21 @@ class GameState with ChangeNotifier {
         if (tokens.length == 4) {
           // 4 arrived
           var positionInWinnersArray = winnersArray
-              .indexWhere((element) => element["type"] == token.type);
+              .indexWhere((element) => element == token.type.toString());
           if (positionInWinnersArray == -1) {
             if (winnersArray.length == 0) {
-              winnersArray.add(token.type);
+              winnersArray.add(token.type.toString());
+              turns.remove(token.turn);
               notifyListeners();
               socket.emit('theFirstWinner', {"playerId": token.userModel.id});
             } else if (winnersArray.length == 1) {
-              winnersArray.add(token.type);
+              winnersArray.add(token.type.toString());
+              turns.remove(token.turn);
               notifyListeners();
               socket.emit('theSecondWinner', {"playerId": token.userModel.id});
             } else if (winnersArray.length == 2) {
-              winnersArray.add(token.type);
+              winnersArray.add(token.type.toString());
+              turns.remove(token.turn);
               notifyListeners();
               socket.emit('theThirdWinner', {"playerId": token.userModel.id});
               socket.emit('gameHasEnded', {});
@@ -658,7 +668,16 @@ class GameState with ChangeNotifier {
       gameTokens[i].positionInPath = dataObject['positionInPath'];
       gameTokens[i].userModel = UserModel(dataObject['userModel']['id'],
           dataObject['userModel']['turn'], dataObject['userModel']['name']);
+      notifyListeners();
     }
+    notifyListeners();
+  }
+
+  decodeWinnersArrayAndArrivedTokensArray(
+      List<dynamic> data1, List<dynamic> data2) {
+    winnersArray = data1;
+    arrivedTokens = data2;
+
     notifyListeners();
   }
 
