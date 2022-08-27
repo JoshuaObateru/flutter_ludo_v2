@@ -102,6 +102,16 @@ class GameState with ChangeNotifier {
       Get.log("Game State Changed $data"); //
       // isLoading.value = true;
       var decoded = json.decode(data);
+      shouldPlay = decoded['should_play'];
+      currentTurn = decoded['current_turn'];
+      Get.log("Decoded Current Turn ${decoded['current_turn']}");
+      numberOfTimesRolled = decoded['number_of_times_rolled'];
+      currentTurnIndex = decoded['current_turn_index'];
+      // turns = decoded['turns'];
+      turns = List<int>.from(decoded['turns']);
+      currentPlayerHasPlayed = decoded["currentPlayerHasPlayed"];
+      notifyListeners();
+
       decodeSocketGameTokens(decoded['game_tokens']);
       for (int i = 0; i < decoded['green_initial'].length; i++) {
         greenInitital[i] = Position(decoded['green_initial'][i]['row'],
@@ -123,13 +133,6 @@ class GameState with ChangeNotifier {
         starPositions[i] = Position(decoded['star_positions'][i]['row'],
             decoded['star_positions'][i]['column']);
       }
-      shouldPlay = decoded['should_play'];
-      currentTurn = decoded['current_turn'];
-      numberOfTimesRolled = decoded['number_of_times_rolled'];
-      currentTurnIndex = decoded['current_turn_index'];
-      // turns = decoded['turns'];
-      turns = List<int>.from(decoded['turns']);
-      currentPlayerHasPlayed = decoded["currentPlayerHasPlayed"];
       notifyListeners();
 
       Get.log(" Turns ${decoded['turns']}");
@@ -150,7 +153,7 @@ class GameState with ChangeNotifier {
     //   print("Current assigned socket Dice ${dice.diceOne}");
 
     //   // isLoading.value = false;
-    //   notifyListeners();
+    // notifyListeners();
     // });
 
     //listens when the client is disconnected from the Server
@@ -172,7 +175,17 @@ class GameState with ChangeNotifier {
       this.gameTokens[token.id].tokenPosition = destination;
       this.gameTokens[token.id].positionInPath = pathPosition;
       notifyListeners();
-      updateCurrentPlayerHasPlayed(true);
+      if (steps == 6) {
+        Get.log("From steps == 6 $steps");
+        shouldPlay = true;
+        updateGameStateToSocket();
+        updateCurrentPlayerHasPlayed(true);
+      } else if (steps != 6) {
+        Get.log("From steps != 6 $steps");
+        shouldPlay = false;
+        updateCurrentTurnNew();
+        updateCurrentPlayerHasPlayed(true);
+      }
     } else if (token.tokenState != TokenState.initial) {
       int step = token.positionInPath + steps;
       if (step > 56) return;
@@ -210,7 +223,17 @@ class GameState with ChangeNotifier {
           notifyListeners();
         });
       }
-      updateCurrentPlayerHasPlayed(true);
+      if (steps == 6) {
+        Get.log("From steps == 6 $steps");
+        shouldPlay = true;
+        updateGameStateToSocket();
+        updateCurrentPlayerHasPlayed(true);
+      } else if (steps != 6) {
+        Get.log("From steps != 6 $steps");
+        shouldPlay = false;
+        updateCurrentTurnNew();
+        updateCurrentPlayerHasPlayed(true);
+      }
     } else if (token.tokenState != TokenState.initial && steps == 0) return;
   }
 
@@ -501,13 +524,28 @@ class GameState with ChangeNotifier {
       shouldPlay = true;
       updateCurrentPlayerHasPlayed(false);
       updateGameStateToSocket();
-    } else {
-      if (userModel.turn == currentTurn &&
-          currentPlayerHasPlayed &&
-          steps != 6) {
+    } else if (userModel.turn == currentTurn && steps != 6) {
+      var tokens = this
+          .gameTokens
+          .where((element) =>
+              element.turn == userModel.turn &&
+              element.tokenState == TokenState.initial)
+          .toList();
+      var tokesNotInInitial = this
+          .gameTokens
+          .where((element) =>
+              element.turn == userModel.turn &&
+              element.tokenState != TokenState.initial)
+          .toList();
+      if (tokens.isEmpty) {
+        shouldPlay = true;
+        updateCurrentPlayerHasPlayed(false);
+      } else if (tokesNotInInitial.length > 0) {
+        shouldPlay = true;
+        updateCurrentPlayerHasPlayed(false);
+      } else {
         shouldPlay = false;
         updateCurrentPlayerHasPlayed(true);
-        updateGameStateToSocket();
       }
     }
   }
