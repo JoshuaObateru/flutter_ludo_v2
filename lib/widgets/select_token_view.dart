@@ -14,13 +14,6 @@ class SelectTokenView extends StatefulWidget {
 }
 
 class _SelectTokenViewState extends State<SelectTokenView> {
-  final List<Map<String, dynamic>> tokens = [
-    {"type": TokenType.green, "color": Colors.green},
-    {"type": TokenType.yellow, "color": Colors.yellow},
-    {"type": TokenType.blue, "color": Colors.blue},
-    {"type": TokenType.red, "color": Colors.red}
-  ];
-
   TextEditingController textEditingController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -77,7 +70,8 @@ class _SelectTokenViewState extends State<SelectTokenView> {
                 const Spacer(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List<Widget>.generate(tokens.length, (index) {
+                  children:
+                      List<Widget>.generate(gameState.tokens.length, (index) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
@@ -87,7 +81,7 @@ class _SelectTokenViewState extends State<SelectTokenView> {
                               return;
                             }
                             gameState.assignUserToToken(
-                                tokens[index]['type'],
+                                gameState.tokens[index]['type'],
                                 dice,
                                 textEditingController.text.trim(),
                                 context);
@@ -101,7 +95,7 @@ class _SelectTokenViewState extends State<SelectTokenView> {
                               width: size.width * 0.12,
                               height: size.width * 0.12,
                               decoration: BoxDecoration(
-                                  color: tokens[index]['color'],
+                                  color: gameState.tokens[index]['color'],
                                   shape: BoxShape.circle),
                             ),
                           ),
@@ -110,8 +104,21 @@ class _SelectTokenViewState extends State<SelectTokenView> {
                           width: size.width * 0.03,
                           height: size.height * 0.03,
                           decoration: BoxDecoration(
-                              shape: BoxShape.circle, border: Border.all()),
-                        )
+                              shape: BoxShape.circle,
+                              border: Border.all(),
+                              color: gameState.tokens[index].containsKey("name")
+                                  ? gameState.tokens[index]['color']
+                                  : null),
+                        ),
+                        gameState.tokens[index].containsKey("name")
+                            ? SizedBox(height: 10)
+                            : Offstage(),
+                        gameState.tokens[index].containsKey("name")
+                            ? Text(
+                                '${gameState.tokens[index]["name"]}',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              )
+                            : Offstage()
                       ],
                     );
                   }),

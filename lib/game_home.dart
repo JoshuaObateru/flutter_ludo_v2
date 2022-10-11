@@ -1,11 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:ludo/gameengine/model/user_model.dart';
 import 'package:ludo/widgets/dice_turn_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 import './widgets/gameplay.dart';
 import 'gameengine/model/game_state.dart';
 
 class GameHome extends StatefulWidget {
-  GameHome({Key key, this.title}) : super(key: key);
+  final Socket socket;
+  final UserModel userModel;
+  GameHome({Key key, this.title, this.socket, this.userModel})
+      : super(key: key);
   final String title;
   @override
   _GameHomeState createState() => _GameHomeState();
@@ -14,10 +22,56 @@ class GameHome extends StatefulWidget {
 class _GameHomeState extends State<GameHome> {
   GlobalKey keyBar = GlobalKey();
   void onPressed() {}
+
+  Timer countdownTimer;
+  Duration myDuration = Duration(seconds: 30);
+
+  void startTimer() {
+    countdownTimer =
+        Timer.periodic(Duration(seconds: 1), (_) => setCountDown());
+  }
+
+  void stopTimer() {
+    setState(() => countdownTimer.cancel());
+  }
+
+  void resetTimer() {
+    stopTimer();
+    setState(() => myDuration = Duration(seconds: 30));
+  }
+
+  void setCountDown() {
+    final reduceSecondsBy = 1;
+    Get.log("set Count Down called again!");
+    setState(() {
+      final seconds = myDuration.inSeconds - reduceSecondsBy;
+      if (seconds < 0) {
+        countdownTimer.cancel();
+        widget.socket
+            .emit('missedOpportunity', {"playerId": widget.userModel.id});
+        Get.log("Cancelled!");
+      } else {
+        myDuration = Duration(seconds: seconds);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
     final gameState = Provider.of<GameState>(context);
+
+    String strDigits(int n) => n.toString().padLeft(2, '0');
+
+    final seconds = strDigits(myDuration.inSeconds.remainder(30));
+
+    // if (gameState.currentPlayerId == gameState.userModel.id &&
+    //     (countdownTimer == null || !countdownTimer.isActive)) {
+    //   if (countdownTimer != null) {
+    //     resetTimer();
+    //   }
+    //   startTimer();
+    // }
     return Scaffold(
       appBar: AppBar(
         key: keyBar,
@@ -66,12 +120,18 @@ class _GameHomeState extends State<GameHome> {
       ),
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
-        child: Container(
-          height: 50.0,
-        ),
+        // child: Container(
+        //     height: 50.0,
+        //     child: gameState.currentPlayerId == gameState.userModel.id
+        //         ? Center(
+        //             child: Text(
+        //               'Your Round ${seconds}s remaining',
+        //               style:
+        //                   TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        //             ),
+        //           )
+        //         : Offstage()),
       ),
-      // floatingActionButton: Dice(),
-      // floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }

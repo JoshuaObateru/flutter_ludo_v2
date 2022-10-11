@@ -7,7 +7,7 @@ import '../gameengine/model/token.dart';
 import 'dice.dart';
 
 class DiceTurnWidget extends StatelessWidget {
-  const DiceTurnWidget(
+  DiceTurnWidget(
       {Key key,
       this.isDiceLeading = false,
       this.turn,
@@ -23,6 +23,9 @@ class DiceTurnWidget extends StatelessWidget {
   final Color foregroundColor;
   final Token token;
   final bool isTop;
+
+  int endTime = DateTime.now().millisecondsSinceEpoch +
+      Duration(seconds: 30).inMilliseconds;
 
   @override
   Widget build(BuildContext context) {
